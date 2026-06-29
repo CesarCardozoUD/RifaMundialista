@@ -185,7 +185,7 @@ function Home() {
                     </div>
                 </div>
 
-                <div className="bg-slate-800 border border-zinc-800 rounded-2xl p-6 mt-6">
+                {/* <div className="bg-slate-800 border border-zinc-800 rounded-2xl p-6 mt-6">
 
                     <h2 className="text-xl font-bold mb-4">
                         Datos Curiosos 💡
@@ -208,7 +208,7 @@ function Home() {
 
                     </div>
 
-                </div>
+                </div> */}
 
 
                 <div className="mt-6 bg-zinc-900 border border-zinc-800 rounded-3xl p-8">

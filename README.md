@@ -1,217 +1,73 @@
-# Rifa Mundialista
+# React + TypeScript + Vite
 
-Plataforma web para predicciones de partidos de la Copa Mundial de la FIFA. Los participantes pueden registrar sus pronósticos, acumular puntos según la precisión de sus resultados y competir en una clasificación general durante todo el torneo.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## Características
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-### Predicciones
+## React Compiler
 
-* Registro de predicciones por partido.
-* Modificación de predicciones antes del inicio del encuentro.
-* Visualización de predicciones previamente registradas.
-* Restricción automática de cambios una vez iniciado el partido.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-### Sistema de Puntuación
+## Expanding the ESLint configuration
 
-| Resultado                 | Puntos |
-| ------------------------- | ------ |
-| Marcador exacto           | 2      |
-| Ganador o empate acertado | 1      |
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-Algunos encuentros pueden incluir multiplicadores especiales de puntuación.
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-### Multiplicadores
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-La plataforma permite definir partidos destacados con bonificaciones de puntos.
-
-Ejemplos:
-
-| Multiplicador | Marcador Exacto | Ganador Correcto |
-| ------------- | --------------- | ---------------- |
-| x1            | 2               | 1                |
-| x2            | 4               | 2                |
-| x3            | 6               | 3                |
-
-### Tabla de Posiciones
-
-* Clasificación automática de participantes.
-* Actualización de puntajes en tiempo real.
-* Ranking global del torneo.
-
-### Datos Curiosos
-
-Cada jornada incluye estadísticas, récords históricos, rachas y curiosidades relacionadas con los equipos participantes.
-
-### Administración
-
-Los administradores pueden:
-
-* Crear participantes.
-* Activar cuentas.
-* Restablecer contraseñas.
-* Registrar resultados oficiales.
-* Configurar multiplicadores.
-* Gestionar el avance del torneo.
-
----
-
-## Tecnologías Utilizadas
-
-### Frontend
-
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
-* React Router
-
-### Backend
-
-* Supabase
-* PostgreSQL
-* Funciones RPC
-* Row Level Security (RLS)
-
----
-
-## Arquitectura
-
-```text
-React
-  │
-  ▼
-Supabase
-  │
-  ▼
-PostgreSQL
-  │
-  ▼
-Funciones RPC
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-La lógica de negocio principal se ejecuta en la base de datos mediante funciones PostgreSQL para garantizar integridad, consistencia y seguridad.
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
----
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-## Modelo de Datos
-
-### arquitectura de tablas
-
-![alt text](public/BD.png)
-
-### matches
-
-Almacena los partidos del torneo.
-
-Información relevante:
-
-* Equipos participantes.
-* Fecha y hora del encuentro.
-* Resultado oficial.
-* Estado del partido.
-* Multiplicador de puntuación.
-
-### prediction
-
-Almacena las predicciones realizadas por cada usuario.
-
-### prediction_result
-
-Almacena el resultado procesado de cada predicción, incluyendo:
-
-* Resultado pronosticado.
-* Resultado real.
-* Puntos obtenidos.
-
-### scores
-
-Mantiene el puntaje acumulado de cada participante para la generación del leaderboard.
-
----
-
-## Seguridad
-
-La plataforma implementa:
-
-* Autenticación mediante Supabase.
-* Row Level Security (RLS).
-* Validaciones de negocio en funciones RPC.
-* Restricción de modificaciones una vez iniciado un partido.
-* Operaciones sensibles protegidas desde base de datos.
-
----
-
-## Instalación
-
-### Clonar repositorio
-
-```bash
-git clone <repository-url>
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-### Instalar dependencias
-
-```bash
-npm install
-```
-
-### Ejecutar entorno local
-
-```bash
-npm run dev
-```
-
-### Generar build de producción
-
-```bash
-npm run build
-```
-
-### Visualizar build local
-
-```bash
-npm run preview
-```
-
----
-
-## Variables de Entorno
-
-Crear un archivo `.env` en la raíz del proyecto:
-
-```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-```
-
----
-
-## Desafíos Técnicos
-
-Este proyecto incluye varios componentes de lógica de negocio implementados directamente en PostgreSQL:
-
-* Cálculo automático de puntajes.
-* Procesamiento masivo de predicciones.
-* Uso de `UPSERT` mediante `ON CONFLICT`.
-* Leaderboard calculado desde resultados históricos.
-* Bloqueo automático de predicciones según fecha del encuentro.
-* Multiplicadores dinámicos por partido.
-* Gestión de resultados mediante funciones RPC.
-
----
-
-## Posibles Mejoras Futuras
-
-* Estadísticas avanzadas de usuarios.
-* Historial de torneos.
-* Logros y recompensas.
-* Notificaciones automáticas.
-* Soporte para múltiples torneos.
-
----
-
-## Licencia
-
-Todos los derechos reservados, para más información leer LICENSE.md

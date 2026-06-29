@@ -2,30 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { supabase } from "../utils/supabase"
 import { useNavigate } from "react-router-dom"
 import toast from "react-hot-toast"
-
-enum match_status {
-    end = "Finalizado",
-    going = "En Juego",
-    pending = "Faltan"
-}
-
-const all_teams = [
-    'Alemania', 'Arabia Saudita', 'Argelia', 'Argentina', 'Australia', 'Austria', 'Bosnia y Herzegovina',
-    'Brasil', 'Bélgica', 'Cabo Verde', 'Canadá', 'Catar', 'Chequia', 'Colombia', 'Corea del Sur', 'Costa de Marfil',
-    'Croacia', 'Curazao', 'Ecuador', 'Egipto', 'Escocia', 'España', 'Estados Unidos', 'Francia', 'Ghana',
-    'Haití', 'Inglaterra', 'Irak', 'Iran', 'Japón', 'Jordania', 'Marruecos', 'México', 'Noruega', 'Nueva Zelanda',
-    'Paises Bajos', 'Panamá', 'Paraguay', 'Portugal', 'RD Congo', 'Senegal', 'Sudáfrica', 'Suecia', 'Suiza',
-    'Turquía', 'Túnez', 'Uruguay', 'Uzbekistán'
-]
-
-const all_groups = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'
-]
-
-const all_dates = [
-    '11 Jun', '12 Jun', '13 Jun', '13 Jun', '14 Jun', '15 Jun', '16 Jun', '17 Jun', '18 Jun', '19 Jun', '20 Jun',
-    '21 Jun', '22 Jun', '23 Jun', '24 Jun', '25 Jun', '26 Jun', '27 Jun',
-]
+import { all_dates, all_groups, all_teams, match_status, months, stage_dict } from "../utils/enums"
 
 interface Match {
     id: string
@@ -36,7 +13,8 @@ interface Match {
     team_a_score?: string | null,
     team_b_score?: string | null,
     group_id: string,
-    multiplier: number
+    multiplier: number,
+    stage: string
 }
 
 interface Prediction {
@@ -45,10 +23,17 @@ interface Prediction {
     team_b_score?: number
 }
 
+interface Results {
+    matchId: string,
+    real_final: string,
+    points: number
+}
+
 function Predictions() {
     const navigate = useNavigate()
 
     const [predictions, setPredictions] = useState<Prediction[]>([])
+    const [results, setResults] = useState<Results[]>([])
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [bkMatches, setBkMatches] = useState<Match[]>([])
     const [filteredMatches, setFilteredMatches] = useState<Match[]>([])
@@ -84,7 +69,8 @@ function Predictions() {
                         team_a_score: item.team_a_score,
                         team_b_score: item.team_b_score,
                         group_id: item.group_id,
-                        multiplier: item.multiplier
+                        multiplier: item.multiplier,
+                        stage: item.stage
                     })) || []
 
                     setAllMatches(formattedMatches)
@@ -109,6 +95,26 @@ function Predictions() {
 
                     setPredictions(formattedPredictions)
                 }
+
+                const { data: resultsByUser } =
+                    await supabase
+                        .from("prediction_result")
+                        .select("match_id, real_final, earned_points")
+                        .eq("user_id", localUser.id)
+
+                if (!resultsByUser) {
+                    setResults([])
+                } else {
+                    const formattedResults =
+                        resultsByUser?.map((item: any) => ({
+                            matchId: item.match_id,
+                            real_final: item.real_final,
+                            points: item.earned_points
+                        }))
+
+                    setResults(formattedResults)
+                }
+
             } catch (error) {
                 navigate("/error?error-id=E-500")
             }
@@ -138,7 +144,10 @@ function Predictions() {
                 setAllMatches(filteredMatches)
                 break;
             case 'DATES':
-                filteredMatches = bkMatches.filter((item) => (item.match_date.getDate().toString() === filterValue.split(' ')[0]))
+                filteredMatches = bkMatches.filter((item) => (
+                    (item.match_date.getDate().toString() === filterValue.split(' ')[0]) &&
+                    (months[item.match_date.getMonth().toString()] === filterValue.split(' ')[1])
+                ))
                 setMaxPage(Math.ceil(filteredMatches.length / 10) - 1)
                 setPage(0)
                 setAllMatches(filteredMatches)
@@ -233,12 +242,74 @@ function Predictions() {
         return `${match_status.pending} ${days}d ${hours}h`
     }
 
+    function buildRealMark(match: Match) {
+        const final_result = results.find((x) => (x.matchId == match.id))
+
+        if (final_result) {
+            const mini_flag_local = <img src={`./flags/${formatCountryName(match.team_a)}.png`}
+                className="w-4 h-4 rounded-full object-cover border border-zinc-700"></img>
+            const mini_flag_visit = <img src={`./flags/${formatCountryName(match.team_b)}.png`}
+                className="w-4 h-4 rounded-full object-cover border border-zinc-700"></img>
+
+            const final_score = final_result.real_final.split('-')
+            const score_local = final_score[0].split(':')[1]
+            const score_visit = final_score[1].split(':')[1]
+
+            return (
+                <div className="flex items-center gap-3 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700">
+                    <div className="flex items-center gap-2">
+                        {mini_flag_local}
+                        <span className="font-semibold text-zinc-100">
+                            {score_local}
+                        </span>
+                        <span className="text-zinc-400">
+                            -
+                        </span>
+                        <span className="font-semibold text-zinc-100">
+                            {score_visit}
+                        </span>
+                        {mini_flag_visit}
+                    </div>
+                    <div className="h-4 w-px bg-zinc-600" />
+                    <span className="text-sm text-blue-400 font-medium">
+                        +{final_result.points} pts
+                    </span>
+
+                </div>
+            )
+        }
+        return <div className="bg-zinc-800 px-3 py-1 rounded-full text-sm text-zinc-300 font-semibold">
+            ⏳ {getTimeRemaining(match.match_date)}
+        </div>
+    }
+
     function disableInput(matchDate: Date) {
         const status = getTimeRemaining(matchDate)
         if (status == match_status.end || status == match_status.going) {
             return true;
         }
         return false;
+    }
+
+    function setScorePanelBG(stage: string, multiplier: number) {
+        switch (stage) {
+            case 'GROUPS':
+                if (multiplier > 1) {
+                    return "bg-gradient-to-br from-amber-800/30 via-amber-400/60 to-amber-200 rounded-2xl p-5 border border-amber-600 shadow-lg shadow-amber-900/50"
+                } else {
+                    return "bg-zinc-900 rounded-2xl border border-zinc-800 p-5 hover:border-emerald-500 transition-colors"
+                }
+            case 'ELIM_16':
+                return "bg-gradient-to-r from-purple-900/50 via-fuchsia-800/50 to-purple-900/50 rounded-2xl p-5 border-2 border-fuchsia-400 shadow-xl shadow-fuchsia-900/50"
+            case 'ELIM_8':
+                return "bg-gradient-to-r from-slate-900/75 via-cyan-800/75 to-slate-900/50 rounded-2xl p-5 border-2 border-cyan-300 shadow-xl shadow-cyan-900/40"
+            case 'ELIM_4':
+                return "bg-gradient-to-r from-emerald-900/50 via-lime-800/50 to-emerald-900/50 rounded-2xl p-5 border border-emerald-500"
+            case 'SEMIFINAL':
+                return "bg-gradient-to-r from-zinc-900/50 via-slate-300/60 to-zinc-700/50 rounded-2xl p-5 border-2 border-slate-300 shadow-xl shadow-slate-900/40"
+            case 'FINAL':
+                return "bg-gradient-to-r from-yellow-900/50 via-amber-500/60 to-yellow-800/50 rounded-2xl p-5 border-2 border-yellow-400 shadow-xl shadow-amber-900/50"
+        }
     }
 
     async function handleSavePredictions() {
@@ -375,22 +446,26 @@ function Predictions() {
                         return (
                             <div
                                 key={match.id}
-                                className={match.multiplier === 2 ?
-                                    "bg-gradient-to-br rounded-2xl p-5 from-yellow-100 via-yellow-400 to-amber-800 border border-yellow-300 shadow-lg shadow-yellow-500/30" :
-                                    "bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-emerald-500 transition-colors"
-                                }
+                                className={setScorePanelBG(match.stage, match.multiplier)}
                             >
                                 <div className="flex items-center justify-between mb-5">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-bold">
-                                            Grupo {match.group_id}
+                                            {match.stage !== 'GROUPS' ? stage_dict[match.stage] : 'Grupo ' + match.group_id}
                                         </div>
-                                        <p className="text-zinc-400 text-sm">
-                                            {match.match_date.toLocaleDateString()}
-                                        </p>
+                                        {
+                                            match.match_date > new Date() ?
+                                                <p className="text-zinc-400 text-sm">
+                                                    {match.match_date.toLocaleDateString()}
+                                                </p> :
+                                                <></>
+                                        }
+
                                     </div>
-                                    <div className="bg-zinc-800 px-3 py-1 rounded-full text-sm text-zinc-300 font-semibold">
-                                        ⏳ {getTimeRemaining(match.match_date)}
+                                    <div>
+                                        {
+                                            buildRealMark(match)
+                                        }
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between gap-4">
@@ -405,20 +480,40 @@ function Predictions() {
                                                 {match.team_a}
                                             </p>
 
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                disabled={disableInput(match.match_date)}
-                                                value={prediction?.team_a_score ?? ""}
-                                                onChange={(event) =>
-                                                    updatePrediction(
-                                                        match.id,
-                                                        "team_a_score",
-                                                        event.target.value
+                                            {
+                                                match.stage === 'GROUPS' ?
+                                                    (
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            disabled={disableInput(match.match_date)}
+                                                            value={prediction?.team_a_score ?? ""}
+                                                            onChange={(event) =>
+                                                                updatePrediction(
+                                                                    match.id,
+                                                                    "team_a_score",
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                            className="w-16 h-14 bg-zinc-800 border border-zinc-700 rounded-xl text-center text-2xl font-bold outline-none focus:border-emerald-500"
+                                                        />
+                                                    ) : (
+                                                        <button
+                                                            disabled={disableInput(match.match_date)}
+                                                            onClick={() => {
+                                                                updatePrediction(match.id, "team_a_score", "100");
+                                                                updatePrediction(match.id, "team_b_score", "0");
+                                                            }}
+                                                            className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${prediction?.team_a_score === 100
+                                                                ? "bg-emerald-950 border-emerald-700 w-15 h-15 text-2xl"
+                                                                : "bg-red-950 border-red-700 w-10 h-10"
+                                                                }`}
+                                                        >
+                                                            {prediction?.team_a_score === 100 ? '🏆' : ''}
+                                                        </button>
                                                     )
-                                                }
-                                                className="w-16 h-14 bg-zinc-800 border border-zinc-700 rounded-xl text-center text-2xl font-bold outline-none focus:border-emerald-500"
-                                            />
+                                            }
+
                                         </div>
 
                                         <div className="flex items-center justify-between py-2" >
@@ -431,20 +526,39 @@ function Predictions() {
                                                 {match.team_b}
                                             </p>
 
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                disabled={disableInput(match.match_date)}
-                                                value={prediction?.team_b_score ?? ""}
-                                                onChange={(event) =>
-                                                    updatePrediction(
-                                                        match.id,
-                                                        "team_b_score",
-                                                        event.target.value
+                                            {
+                                                match.stage === 'GROUPS' ?
+                                                    (
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            disabled={disableInput(match.match_date)}
+                                                            value={prediction?.team_b_score ?? ""}
+                                                            onChange={(event) =>
+                                                                updatePrediction(
+                                                                    match.id,
+                                                                    "team_b_score",
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                            className="w-16 h-14 bg-zinc-800 border border-zinc-700 rounded-xl text-center text-2xl font-bold outline-none focus:border-emerald-500"
+                                                        />
+                                                    ) : (
+                                                        <button
+                                                            disabled={disableInput(match.match_date)}
+                                                            onClick={() => {
+                                                                updatePrediction(match.id, "team_a_score", "0");
+                                                                updatePrediction(match.id, "team_b_score", "100");
+                                                            }}
+                                                            className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${prediction?.team_b_score === 100
+                                                                ? "bg-emerald-950 border-emerald-700 w-15 h-15 text-2xl"
+                                                                : "bg-red-950 border-red-700 w-10 h-10"
+                                                                }`}
+                                                        >
+                                                            {prediction?.team_b_score === 100 ? '🏆' : ''}
+                                                        </button>
                                                     )
-                                                }
-                                                className="w-16 h-14 bg-zinc-800 border border-zinc-700 rounded-xl text-center text-2xl font-bold outline-none focus:border-emerald-500"
-                                            />
+                                            }
                                         </div>
                                     </div>
                                 </div>

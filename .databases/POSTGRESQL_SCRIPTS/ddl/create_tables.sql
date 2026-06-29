@@ -6,7 +6,9 @@ create table matches (
   state varchar(10) not null,
   team_a_score text,
   team_b_score text,
-  group_id varchar(1) not null
+  group_id varchar(1) not null,
+  multiplier int not null default 1,
+  stage varchar(20) not null default 'GROUPS'
 )
 
 create table users (
